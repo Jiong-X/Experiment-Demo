@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment - Page 1</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Welcome to the Experiment</h1>
+    </header>
+    <main>
+        <p>
+            In this experiment, we will ask you a simple question on the next page. 
+            Please click the button below to begin.
+        </p>
+        <!-- Button to go to the next page -->
+        <button id="nextButton">Start Experiment</button>
+    </main>
+
+    <!-- JavaScript to handle navigation -->
+    <script>
+        // Add event listener to the button
+        document.getElementById('nextButton').addEventListener('click', function() {
+            // Navigate to the next page (page2.html)
+            window.location.href = 'CommonCause.html';
+        });
+    </script>
+</body>
+</html>
+

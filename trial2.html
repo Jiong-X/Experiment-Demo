@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OU Process with Causal Relationships</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .slider-container {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h2>Ornstein-Uhlenbeck Process with Causal Relationships</h2>
+
+    <!-- Div to hold the plot -->
+    <div id="chart" style="width: 100%; height: 500px;"></div>
+
+    <!-- Sliders for current values -->
+    <div class="slider-container">
+        <label for="xValueSlider">Current X:</label>
+        <input type="range" id="xValueSlider" min="-10" max="10" step="0.1" value="0">
+        <span id="xValue">0</span>
+    </div>
+
+    <div class="slider-container">
+        <label for="yValueSlider">Current Y1:</label>
+        <input type="range" id="y1ValueSlider" min="-10" max="10" step="0.1" value="0">
+        <span id="yValue">0</span>
+    </div>
+
+    <!-- Reward Section -->
+    <div id="rewardContainer">Reward: <span id="reward">0</span></div>
+
+    <!-- Start button -->
+    <button id="startButton">Start Simulation</button>
+
+    <script>
+        let traceX = {x: [], y: [], mode: 'lines', name: 'X'};
+        let traceY = {x: [], y: [], mode: 'lines', name: 'Y'};
+        let traceZ = {x: [], y: [], mode: 'lines', name: 'Z'};
+        let betaXY = 0;
+        let betaXZ = 1;
+        let betaYX = 0;
+        let betaYZ = 1;
+        let betaZX = 0;
+        let betaZY = 0;
+        let time = 0;
+        let reward = 0;
+        const maxSteps = 10;
+        const totalSteps = 40; // Simulation will stop after 40 steps
+
+        // Fixed values for theta and sigma
+        const theta = 0.5;
+        const sigma = 0.5;
+
+        function randomGaussian() {
+            let u1 = Math.random();
+            let u2 = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        }
+
+        function updateX(x, y, z, betaYX, betaZX, theta, sigma) {
+            let noise = randomGaussian() * sigma;
+            let parentInfluence = (betaYX * y) + (betaZX * z); // Use z instead of Z
+            let deltaX = theta * (parentInfluence - x) + noise;
+            return x + deltaX;
+        }
+
+        function updateY(y, x, z, betaXY, betaZY, theta, sigma) {
+            let noise = randomGaussian() * sigma;
+            let parentInfluence = (betaXY * x) + (betaZY * z);
+            let deltaY = theta * (parentInfluence - y) + noise;
+            return y + deltaY;
+        }
+
+        function updateZ(z, x, y, betaXZ, betaYZ, theta, sigma) {
+            let noise = randomGaussian() * sigma;
+            let parentInfluence = (betaXZ * x) + (betaYZ * y);
+            let deltaZ = theta * (parentInfluence - z) + noise;
+            return z + deltaZ;
+        }
+
+        function updateSlidersAndLabels(x, y) {
+            document.getElementById('xValueSlider').value = x.toFixed(2);
+            document.getElementById('xValue').textContent = x.toFixed(2);
+
+            document.getElementById('y1ValueSlider').value = y.toFixed(2);
+            document.getElementById('yValue').textContent = y.toFixed(2);
+        }
+
+        function checkReward(z) {
+            const rewardLowerBound = 3;
+            const rewardUpperBound = 5;
+            if (z >= rewardLowerBound && z <= rewardUpperBound) {
+                reward += 1;
+                document.getElementById('reward').textContent = reward;
+            }
+        }
+
+        function startSimulation() {
+            let currentStep = 0;
+            let z = 0;
+
+            const updateChart = () => {
+                if (currentStep >= totalSteps) return; // Stop after 40 timesteps
+
+                let x = parseFloat(document.getElementById('xValueSlider').value);
+                let y = parseFloat(document.getElementById('y1ValueSlider').value);
+
+                let newX = updateX(x, y, z, betaYX, betaZX, theta, sigma);
+                let newY = updateY(y, x, z, betaXY, betaZY, theta, sigma);
+                let newZ = updateZ(z, x, y, betaXZ, betaYZ, theta, sigma);
+
+                if (traceX.x.length >= maxSteps) {
+                    traceX.x.shift();
+                    traceX.y.shift();
+                    traceY.x.shift();
+                    traceY.y.shift();
+                    traceZ.x.shift();
+                    traceZ.y.shift();
+                }
+
+                traceX.x.push(time);
+                traceX.y.push(newX);
+                traceY.x.push(time);
+                traceY.y.push(newY);
+                traceZ.x.push(time);
+                traceZ.y.push(newZ);
+
+                Plotly.update('chart', {x: [traceX.x, traceY.x, traceZ.x], y: [traceX.y, traceY.y, traceZ.y]});
+                checkReward(newZ);
+                updateSlidersAndLabels(newX, newY);
+
+                z = newZ; // Update z for the next step
+                time += 1;
+                currentStep++;
+
+                // Schedule the next update after 2 seconds
+                setTimeout(updateChart, 2000);
+            };
+
+            updateChart();
+        }
+
+        // Initialize plot with empty data and green interval between 3 and 5 on y-axis
+        Plotly.newPlot('chart', [traceX, traceY, traceZ], {
+            xaxis: {title: 'Time'},
+            yaxis: {title: 'Value'},
+            title: 'OU Process Over Time',
+            shapes: [
+                {
+                    type: 'rect',
+                    xref: 'paper',
+                    yref: 'y',
+                    x0: 0,
+                    x1: 1,
+                    y0: 3,
+                    y1: 5,
+                    fillcolor: 'green',
+                    opacity: 0.2,
+                    line: {
+                        width: 0
+                    }
+                }
+            ]
+        });
+
+        document.getElementById('startButton').addEventListener('click', startSimulation);
+    </script>
+</body>
+</html>
